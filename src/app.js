@@ -2,17 +2,9 @@ const express = require("express");
 
 const app = express();
 
-app.use("/testAdmin", (req, res, next) => {
-  console.log("checking admin");
+const { adminAuth } = require("./middlewares/auth");
 
-  const token = "xyz";
-  const isAdminAuthorized = token === "xyzxxx"; // Simulating admin check
-  if (!isAdminAuthorized) {
-    res.send("Unauthorized access to admin route");
-  } else {
-    next();
-  }
-}); /////this is the middleware which  will work before each routes
+app.use("/testAdmin", adminAuth);
 
 app.get("/testAdmin", (req, res) => {
   console.log("Admin route accessed");
