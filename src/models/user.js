@@ -43,11 +43,15 @@ const userSchema = new mongoose.Schema(
     },
     gender: {
       type: String,
-      validate(value) {
-        if (!["male", "female", "other"].includes(value)) {
-          throw new Error("Gender data is not correct");
-        }
+      enum: {
+        values: ["male", "female", "other"],
+        message: `{VALUE} is not a valid type`,
       },
+      // validate(value) {
+      //   if (!["male", "female", "other"].includes(value)) {
+      //     throw new Error("Gender data is not correct");
+      //   }
+      // },
     },
     photoUrl: {
       type: String,
@@ -73,6 +77,10 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+//compound index on first name and last name
+
+// userSchema.index({ firstName: 1, lastName: 1 });
+
 // writing the helper function  for creating the token
 userSchema.methods.getJWT = async function () {
   const token = await jwt.sign(
@@ -82,7 +90,7 @@ userSchema.methods.getJWT = async function () {
     },
     "shubhamgolhar",
     {
-      expiresIn: "0d", // Token expiration time
+      expiresIn: "1d", // Token expiration time
     }
   );
   return token;
