@@ -4,6 +4,8 @@ const requestRouter = express.Router();
 const { userAuth } = require("../middlewares/auth");
 const connectionRequest = require("../models/connectionRequest");
 const User = require("../models/user");
+
+const USER_DATA = ["firstName", "lastName","gender","about","skills","age"];
 //send request and intrested or ignored (sendind intrest)
 requestRouter.post(
   "/request/send/:status/:toUserId",
@@ -118,16 +120,104 @@ requestRouter.post(
 );
 
 // get all the pending request for the loggedin user
-
 requestRouter.get("/user/request/received", userAuth, async (req, res) => {
   try {
     const loggedinUser = req.user;
 
-    const findAllPendingrequest = await connectionRequest.find({
-      toUserId: loggedinUser._id,
-      status: "intrested",
+    const findAllPendingrequest = await connectionRequest
+      .find({
+        toUserId: loggedinUser._id,
+        status: "intrested",
+      })
+      .populate("fromUserId", USER_DATA);
+
+    res.json({
+      message: "Data fetched successfully",
+      data: findAllPendingrequest,
     });
-  } catch (error) {}
+  } catch (error) {
+    res.status(400).send("Something went wrong");
+  }
 });
 
+requestRouter.get("/user/connections", userAuth, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
+
+    const connections = await connectionRequest
+      .find({
+        $or: [
+          { toUserId: loggedInUser._id, status: "accepted" },
+          { fromUserId: loggedInUser._id, status: "accepted" },
+        ],
+      })
+      .populate("fromUserId", USER_DATA)
+      .populate("toUserId", USER_DATA);
+
+    const loggedInUserId = loggedInUser._id.toString();
+
+    const data = connections.map(({ fromUserId, toUserId }) => {
+      const fromId = fromUserId?._id?.toString();
+      const toId = toUserId?._id?.toString();
+
+      return fromId === loggedInUserId ? toUserId : fromUserId;
+    });
+
+    res.json({
+      message: "Data fetched successfully",
+      data: data,
+    });
+  } catch (error) {
+    console.error("Error fetching connections:", error);
+    res.status(500).send("Something went wrong");
+  }
+});
+
+requestRouter.get("/user/feed", userAuth, async (req, res) => {
+  try {
+    const loggedinUser = req.user;
+    const page=parseInt(req.query.page) || 1 //convertig string to integer
+    let limit=parseInt(req.query.limit) || 10
+
+    limit = limit > 50 ? 50 :limit
+
+    const skip=(page-1)*limit
+
+    const connectionRequestSendedOrReceived = await connectionRequest
+      .find({
+        $or: [{ fromUserId: loggedinUser._id }, { toUserId: loggedinUser._id }],
+      })
+      .select("fromUserId toUserId")
+
+    const hideFromFeed = new Set();
+
+    connectionRequestSendedOrReceived.forEach((req) => {
+      hideFromFeed.add(req.fromUserId.toString());
+      hideFromFeed.add(req.toUserId.toString());
+    });
+
+
+   
+
+    const remaningUsers = await User.find({
+
+      $and:[
+        {
+          _id: { $nin: Array.from(hideFromFeed) } //function to convert the set into an array
+        },
+        {
+          _id:{$ne:loggedinUser._id}
+        }
+      ]
+     , //selecting the users only those are in feed showing expect from hideFromFeed array and loggedin user itself should not see himself in feed
+    }).select(USER_DATA).skip(skip).limit(limit);;
+    res.json({
+      message: "data fetched successfully",
+      data: remaningUsers,
+    });
+  } catch (error) {
+    console.error("Error fetching connections:", error);
+    res.status(500).send("Something went wrong");
+  }
+});
 module.exports = requestRouter;
