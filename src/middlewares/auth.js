@@ -17,7 +17,7 @@ const userAuth = async (req, res, next) => {
     const { token } = req.cookies;
 
     if (!token) {
-      throw new Error("Invalid token, please login again");
+      return res.status(401).send("Please login to continue");
     } else {
       const decodeData = await jwt.verify(token, "shubhamgolhar");
 

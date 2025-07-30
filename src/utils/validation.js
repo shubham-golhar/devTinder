@@ -27,9 +27,8 @@ const validateEditProfiledata = (req) => {
   const allowedFiledsToUpdate = [
     "firstName",
     "lastName",
-    "emailId",
     "age",
-    "skills",
+    "photoUrl",
     "about",
     "gender",
   ];

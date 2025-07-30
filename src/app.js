@@ -1,9 +1,16 @@
 const express = require("express");
 const connectDB = require("./config/database");
 const cookieParser = require("cookie-parser");
+const cors = require("cors");
 
 const app = express();
 
+app.use(
+  cors({
+    origin: "http://localhost:5173", //by doing this we can able to set cookies which is already set in the browser
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(cookieParser());
 

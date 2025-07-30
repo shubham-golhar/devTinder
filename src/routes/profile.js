@@ -11,20 +11,19 @@ profileRouter.get("/profile/view", userAuth, async (req, res) => {
   try {
     const user = req.user; // user is attached to request object by userAuth middleware
 
-    res.send({ user });
+    res.send({ data: user });
   } catch (error) {
     res.status(400).send("Error fetching profile: " + error.message);
   }
 });
 
 profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
-  console.log("req body", req.body);
+  console.log(req.body);
   try {
     if (!validateEditProfiledata(req)) {
-      throw new Error("Invalid fields to update");
+      return res.status(400).send("Invalid fields to update");
     } else {
       const loggedinuser = req.user;
-      console.log("login usre", loggedinuser);
       Object.keys(req.body).forEach(
         (key) => (loggedinuser[key] = req.body[key])
       );
@@ -32,7 +31,7 @@ profileRouter.patch("/profile/edit", userAuth, async (req, res) => {
       await loggedinuser.save(); // Save the updated user document
       res.send({
         message: "Profile updated successfully",
-        user: loggedinuser,
+        data: loggedinuser,
       });
     }
   } catch (error) {

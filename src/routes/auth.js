@@ -13,7 +13,17 @@ authRouter.post("/signup", async (req, res) => {
     //data validation
     validateSignupData(req);
 
-    const { firstName, lastName, emailId, password } = req.body;
+    const {
+      firstName,
+      lastName,
+      emailId,
+      password,
+      age,
+      photoUrl,
+      skills,
+      about,
+      gender,
+    } = req.body;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -22,9 +32,23 @@ authRouter.post("/signup", async (req, res) => {
       lastName,
       emailId,
       password: hashedPassword,
+      age,
+      photoUrl,
+      skills,
+      about,
+      gender,
     });
-    await user.save(); //this save() function return promose
-    res.send("User created successfully");
+    const savedUser = await user.save(); //this save() function return promose
+    const token = await savedUser.getJWT();
+    res.cookie("token", token, {
+      expires: new Date(Date.now() + 8 * 3600000), // Cookie expiration time
+    });
+
+    res.send({
+      message: "Account created successfully",
+      data: savedUser,
+      status: true,
+    });
   } catch (error) {
     res.status(400).send("Error creating user: " + error.message);
   }
@@ -60,13 +84,19 @@ authRouter.post("/login", async (req, res) => {
         res.cookie("token", token, {
           expires: new Date(Date.now() + 8 * 3600000), // Cookie expiration time
         });
-        res.send("login successfully");
+        return res.send({
+          message: "login successfully",
+          data: user,
+          status: true,
+        });
       } else {
-        throw new Error("Invalid Credentials");
+        return res
+          .status(400)
+          .send({ message: "Invalid Credentials", data: null, status: false });
       }
     }
   } catch (error) {
-    res.status(400).send("Error logging in: " + error.message);
+    return res.status(400).send("Error logging in: " + error.message);
   }
 });
 

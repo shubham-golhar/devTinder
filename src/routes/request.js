@@ -5,7 +5,15 @@ const { userAuth } = require("../middlewares/auth");
 const connectionRequest = require("../models/connectionRequest");
 const User = require("../models/user");
 
-const USER_DATA = ["firstName", "lastName","gender","about","skills","age"];
+const USER_DATA = [
+  "firstName",
+  "lastName",
+  "gender",
+  "about",
+  "skills",
+  "age",
+  "photoUrl",
+];
 //send request and intrested or ignored (sendind intrest)
 requestRouter.post(
   "/request/send/:status/:toUserId",
@@ -15,6 +23,10 @@ requestRouter.post(
       const fromUserId = req.user._id;
       const toUserId = req.params.toUserId;
       const status = req.params.status;
+
+      console.log("From User ID:", fromUserId);
+      console.log("To User ID:", toUserId);
+      console.log("Status:", status);
 
       const FromidString = fromUserId.toString();
 
@@ -36,7 +48,7 @@ requestRouter.post(
 
       const checkToUserId = await User.findById(toUserId);
       if (!checkToUserId) {
-        throw new Error("This user does not exist");
+        return res.status(400).json({ message: "User not found" });
       }
       const checkExistingConnection = await connectionRequest.findOne({
         $or: [
@@ -67,9 +79,10 @@ requestRouter.post(
 
       res.json({
         message: "Connection request send successfully",
-        data,
+        data: data,
       });
     } catch (error) {
+      console.error("Error sending connection request:", error);
       res.status(400).send("Something went wrong");
     }
   }
@@ -112,7 +125,7 @@ requestRouter.post(
 
       const data = await checkRequestIdExist.save();
 
-      res.json({ message: "connection request " + status, data });
+      res.json({ message: "connection request " + status, data: data });
     } catch (error) {
       res.status(400).send("Something went wrong");
     }
@@ -129,7 +142,8 @@ requestRouter.get("/user/request/received", userAuth, async (req, res) => {
         toUserId: loggedinUser._id,
         status: "intrested",
       })
-      .populate("fromUserId", USER_DATA);
+      .populate("fromUserId", USER_DATA)
+      .populate("toUserId", ["firstName", "lastName"]);
 
     res.json({
       message: "Data fetched successfully",
@@ -176,18 +190,18 @@ requestRouter.get("/user/connections", userAuth, async (req, res) => {
 requestRouter.get("/user/feed", userAuth, async (req, res) => {
   try {
     const loggedinUser = req.user;
-    const page=parseInt(req.query.page) || 1 //convertig string to integer
-    let limit=parseInt(req.query.limit) || 10
+    const page = parseInt(req.query.page) || 1; //convertig string to integer
+    let limit = parseInt(req.query.limit) || 10;
 
-    limit = limit > 50 ? 50 :limit
+    limit = limit > 50 ? 50 : limit;
 
-    const skip=(page-1)*limit
+    const skip = (page - 1) * limit;
 
     const connectionRequestSendedOrReceived = await connectionRequest
       .find({
         $or: [{ fromUserId: loggedinUser._id }, { toUserId: loggedinUser._id }],
       })
-      .select("fromUserId toUserId")
+      .select("fromUserId toUserId");
 
     const hideFromFeed = new Set();
 
@@ -196,21 +210,19 @@ requestRouter.get("/user/feed", userAuth, async (req, res) => {
       hideFromFeed.add(req.toUserId.toString());
     });
 
-
-   
-
     const remaningUsers = await User.find({
-
-      $and:[
+      $and: [
         {
-          _id: { $nin: Array.from(hideFromFeed) } //function to convert the set into an array
+          _id: { $nin: Array.from(hideFromFeed) }, //function to convert the set into an array
         },
         {
-          _id:{$ne:loggedinUser._id}
-        }
-      ]
-     , //selecting the users only those are in feed showing expect from hideFromFeed array and loggedin user itself should not see himself in feed
-    }).select(USER_DATA).skip(skip).limit(limit);;
+          _id: { $ne: loggedinUser._id },
+        },
+      ], //selecting the users only those are in feed showing expect from hideFromFeed array and loggedin user itself should not see himself in feed
+    })
+      .select(USER_DATA)
+      .skip(skip)
+      .limit(limit);
     res.json({
       message: "data fetched successfully",
       data: remaningUsers,
